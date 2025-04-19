@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pothole Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+        <h1 class="text-3xl font-bold mb-4">Pothole Detection</h1>
+        <form id="uploadForm" class="mb-6">
+            <label class="block mb-2 font-semibold" for="imageInput">Upload Image:</label>
+            <input type="file" id="imageInput" name="image" accept="image/*" class="mb-4" required />
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                Detect Potholes
+            </button>
+        </form>
+        <div id="results" class="mb-6"></div>
+        <div id="map" class="w-full h-96 rounded shadow"></div>
+    </div>
+
+    <script>
+        let map;
+        let markers = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 37.7749, lng: -122.4194 }, // Default to San Francisco
+                zoom: 12,
+            });
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            const imageFile = document.getElementById('imageInput').files[0];
+            formData.append('image', imageFile);
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Detecting potholes...';
+
+            try {
+                const response = await fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<p class="text-red-600">${data.error}</p>`;
+                    return;
+                }
+
+                resultsDiv.innerHTML = `<p class="font-semibold mb-2">${data.message}</p>`;
+
+                clearMarkers();
+
+                // For demo, we don't have real location data from backend
+                // So we place markers randomly near center
+                data.potholes.forEach((pothole, index) => {
+                    const lat = 37.7749 + (Math.random() - 0.5) * 0.02;
+                    const lng = -122.4194 + (Math.random() - 0.5) * 0.02;
+                    const marker = new google.maps.Marker({
+                        position: { lat, lng },
+                        map: map,
+                        title: `Pothole ${index + 1} - Volume: ${pothole.volume_estimation.toFixed(2)}`
+                    });
+                    markers.push(marker);
+                });
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="text-red-600">Error: ${error.message}</p>`;
+            }
+        });
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
